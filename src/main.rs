@@ -1,4 +1,14 @@
-#[derive(Debug, serde::Deserialize)]
+use crossterm::{ExecutableCommand, terminal::{EnterAlternateScreen, enable_raw_mode, LeaveAlternateScreen, disable_raw_mode}};
+use serde::{Deserialize};
+use std::{fs::{File, self}, io::stdout};
+
+use reqwest::ClientBuilder;
+use ratatui::{
+    prelude::*,
+    widgets::Paragraph,
+};
+
+#[derive(Debug, Deserialize)]
 enum ContentRating {
     safe,
     suggestive,
@@ -6,40 +16,37 @@ enum ContentRating {
     pornographic
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Deserialize)]
 enum Title {
     en(String),
     ja(String),
     ja_ro(String),
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Deserialize)]
 struct Description {
     en: Option<String>,
     ru: Option<String>,
     ja: Option<String>,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Deserialize)]
 struct Attributes {
     title: Title,
     description: Description,
 }
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Deserialize)]
 struct Manga {
     id: String,
     attributes: Attributes,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Deserialize)]
 struct SearchResponse {
     data: Vec<Manga>,
     total: i64,
 }
 
-use std::fs::{File, self};
-
-use reqwest::ClientBuilder;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -59,6 +66,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // File::create("./output.txt");
     // fs::write("./output.txt", res.text().await?);
     
-    println!("{:#?}", res.json::<SearchResponse>().await?);
+    let json = res.json::<SearchResponse>().await?;
+    let mut titles = String::new();
+    for manga in json.data {
+        match manga.attributes.title {
+            Title::en(t) => titles.push_str(&t),
+            _ => continue,
+        }
+    }
+    stdout().execute(EnterAlternateScreen)?;
+    enable_raw_mode()?;
+    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+    terminal.clear()?;
+    let mut count = 0;
+    while true {
+        terminal.draw(|frame| {
+            frame.render_widget(Paragraph::new(titles.to_string()), Rect::new(10, 10, 10, 10));
+        })?;
+        count += 1;
+        if count == 1000000 {
+            break;
+        }
+    }
+    terminal.clear()?;
+    stdout().execute(LeaveAlternateScreen)?;
+    disable_raw_mode()?;
+
     Ok(())
 }
