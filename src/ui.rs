@@ -10,7 +10,11 @@ pub fn draw_frame(term: &mut utils::Term, app: &App) {
                 .border_type(BorderType::Rounded)
                 .title("Manga Search")
         );
-        let hello = Paragraph::new("Hello, world!").block(
+        let content = match app.results {
+            Some(ref res) => format!("{res:#?}"),
+            None => format!("No search results for: {inp}", inp = app.input),
+        };
+        let hello = Paragraph::new(content).block(
             Block::new()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
