@@ -1,9 +1,26 @@
+use serde::Deserialize;
+
+#[derive(Deserialize, Debug)]
+pub struct MangaSearchResult {
+    result: SearchResult,
+    response: String,
+    data: Vec<Manga>,
+}
+
+#[derive(Deserialize, Debug)]
+pub enum SearchResult {
+    Ok,
+    Error,
+}
+
+#[derive(Deserialize, Debug)]
 pub struct Manga {
     id: String,
     manga_type: String,
     attributes: Attribute,
 }
 
+#[derive(Deserialize, Debug)]
 pub struct Attribute {
     year: i32,
     title: Title,
@@ -18,16 +35,19 @@ pub struct Attribute {
     // tags: Vec<Tag>,
 }
 
+#[derive(Deserialize, Debug)]
 pub struct Title {
     en: Option<String>,
     ja: Option<String>,
     ja_ro: Option<String>,
 }
 
+#[derive(Deserialize, Debug)]
 pub struct Description {
     en: Option<String>,
 }
 
+#[derive(Deserialize, Debug)]
 pub enum ContentRating {
     Safe,
     Suggestive,
@@ -35,6 +55,7 @@ pub enum ContentRating {
     Pornographic,
 }
 
+#[derive(Deserialize, Debug)]
 pub enum Status {
     Completed,
     Ongoing,
