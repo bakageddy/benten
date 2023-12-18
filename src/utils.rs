@@ -1,6 +1,7 @@
 use crossterm::{
+    event::{DisableMouseCapture, EnableMouseCapture},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand, event::{EnableMouseCapture, DisableMouseCapture},
+    ExecutableCommand,
 };
 use ratatui::prelude::*;
 
@@ -14,6 +15,7 @@ use anyhow::Result;
 pub type Term = ratatui::Terminal<CrosstermBackend<Stdout>>;
 
 pub const USER_AGENT: &'static str = "benten/1.0";
+pub const API_BASE_URL: &'static str = "https://api.mangadex.org/";
 
 pub fn start() -> Result<Terminal<CrosstermBackend<Stdout>>> {
     stdout().execute(EnterAlternateScreen)?;
