@@ -2,64 +2,76 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct MangaSearchResult {
-    result: SearchResult,
-    response: String,
-    data: Vec<Manga>,
-}
-
-#[derive(Deserialize, Debug)]
-pub enum SearchResult {
-    Ok,
-    Error,
+    pub result: String,
+    pub response: String,
+    pub data: Vec<Manga>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Manga {
-    id: String,
-    manga_type: String,
-    attributes: Attribute,
+    pub id: String,
+    #[serde(alias = "type")]
+    pub manga_type: String,
+    pub attributes: Attribute,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Attribute {
-    year: i32,
-    title: Title,
-    alt_title: Title,
-    desc: Description,
-    last_vol: String,
-    last_chapter: String,
-    status: Status,
-    content_rating: ContentRating,
-    created: String,
-    last_updated: String,
+    pub year: i32,
+    pub title: Title,
+
+    // pub description: Description,
+    // #[serde(alias = "lastVolume")]
+    // last_vol: String,
+    // #[serde(alias = "lastChapter")]
+    // last_chapter: String,
+    // status: Status,
+    // #[serde(alias = "contentRating")]
+    // content_rating: ContentRating,
+    // #[serde(alias = "createdAt")]
+    // created_at: String,
     // tags: Vec<Tag>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Title {
-    en: Option<String>,
-    ja: Option<String>,
-    ja_ro: Option<String>,
+    pub en: Option<String>,
+    pub ja: Option<String>,
+    pub ja_ro: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Description {
-    en: Option<String>,
+    pub en: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
 pub enum ContentRating {
+    #[serde(alias = "safe")]
     Safe,
+
+    #[serde(alias = "suggestive")]
     Suggestive,
+
+    #[serde(alias = "erotica")]
     Erotica,
+
+    #[serde(alias = "pornographic")]
     Pornographic,
 }
 
 #[derive(Deserialize, Debug)]
 pub enum Status {
+    #[serde(alias = "completed")]
     Completed,
+
+    #[serde(alias = "ongoing")]
     Ongoing,
+
+    #[serde(alias = "cancelled")]
     Cancelled,
+
+    #[serde(alias = "hiatus")]
     Hiatus,
 }
 
