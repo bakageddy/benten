@@ -8,13 +8,26 @@ pub fn draw_frame(term: &mut utils::Term, app: &App) {
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
-                .title("Manga Search")
+                .title("Manga Search"),
         );
-        let content = match app.results {
-            Some(ref res) => format!("{res:#?}"),
-            None => format!("No search results for: {inp}", inp = app.input),
+        let mut titles = String::new();
+
+        // What the fuck is this?
+        // TODO: refactor this reference-ful code!
+        match app.results {
+            Some(ref res) => {
+                for i in &res.data {
+                    if let Some(ref title) = i.attributes.title.en {
+                        titles.push_str(title);
+                        titles.push('\n');
+                    }
+                }
+            },
+            None => {titles = "No results".to_string();}
         };
-        let hello = Paragraph::new(content).block(
+
+
+        let hello = Paragraph::new(titles).block(
             Block::new()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
