@@ -39,14 +39,23 @@ impl App {
     }
 
     pub fn get_manga_list(&mut self) {
+        self.results = None;
         let url = format!("{base}/manga", base = utils::API_BASE_URL);
         let mut params = HashMap::new();
         params.insert("title", self.input.as_str());
+        params.insert("limit", "1");
 
-        let res = self.client.get(url).form(&params).send();
+        let res = self.client.get(url)
+            .query(&params).send();
         match res {
-            Ok(res) => self.results = res.json::<types::MangaSearchResult>().ok(),
-            Err(_) => self.results = None,
+            Ok(res) => {
+                let json = res.json::<types::MangaSearchResult>();
+                self.results = json.ok();
+            }
+            Err(_) => {
+                self.results = None;
+                println!("Error sending request!");
+            }
         }
     }
 
