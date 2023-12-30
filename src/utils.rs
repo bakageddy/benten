@@ -33,7 +33,7 @@ pub fn shutdown() -> Result<()> {
     Ok(())
 }
 
-pub fn errndie(msg: &str, st_code: i32) -> () {
-    eprintln!("{msg}");
-    exit(st_code);
-}
+// pub fn errndie(msg: &str, st_code: i32) -> () {
+//     eprintln!("{msg}");
+//     exit(st_code);
+// }
