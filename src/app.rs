@@ -1,8 +1,11 @@
-use std::{collections::HashMap, rc::Rc, usize};
+use std::{collections::HashMap, fs, path::Path, rc::Rc, usize};
 
 use ratatui::layout::{Constraint, Layout, Rect};
 
-use crate::{types, utils};
+use crate::{
+    types::{self, DownloadChapter},
+    utils::{self, API_BASE_URL},
+};
 
 pub struct App {
     pub quit: bool,
@@ -45,8 +48,7 @@ impl App {
         params.insert("title", self.input.as_str());
         params.insert("limit", "1");
 
-        let res = self.client.get(url)
-            .query(&params).send();
+        let res = self.client.get(url).query(&params).send();
         match res {
             Ok(res) => {
                 let json = res.json::<types::MangaSearchResult>();
@@ -57,6 +59,56 @@ impl App {
                 println!("Error sending request!");
             }
         }
+    }
+
+    pub fn get_feed(&self, manga: &types::Manga) -> Option<types::MangaChapterResult> {
+        let url = format!("{}/manga/{}/feed", API_BASE_URL, manga.id);
+        let mut params = HashMap::new();
+        params.insert("translatedLanguage[]", "en");
+        params.insert("includeExternalUrl", "0");
+        params.insert("order[chapter]", "asc");
+        let res = self.client.get(url).query(&params).send();
+        match res {
+            Ok(res) => return res.json::<types::MangaChapterResult>().ok(),
+            Err(e) => {
+                eprintln!("What happened!?: {e}");
+                return None;
+            }
+        }
+    }
+
+    pub fn download_chapter(&self, chapter: &types::MangaChapter) -> Result<(), ()> {
+        let url = format!("{}/at-home/server/{}", API_BASE_URL, chapter.id);
+        if let Ok(res) = self.client.get(url).send() {
+            if let Ok(metadata) = res.json::<DownloadChapter>() {
+                let dir = Path::new(&chapter.attributes.title);
+                if Path::exists(dir) {
+                    fs::create_dir(dir).expect("Should not panic!");
+                }
+                let mut i = 1;
+                for page in metadata.chapter.data {
+                    let page_download_url = format!(
+                        "{}/data/{}/{}",
+                        metadata.base_url, metadata.chapter.hash, page
+                    );
+                    if let Ok(page_download_res) = self.client.get(page_download_url).send() {
+                        let _ = fs::write(
+                            // pad with three zeros before
+                            format!("./{i:0>3}.png"),
+                            page_download_res.bytes().unwrap(),
+                        );
+                        i += 1;
+                    } else {
+                        return Err(());
+                    }
+                }
+            } else {
+                return Err(());
+            }
+        } else {
+            return Err(());
+        }
+        Ok(())
     }
 
     pub fn move_cursor_left(&mut self) {
