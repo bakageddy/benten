@@ -16,11 +16,11 @@ pub fn draw_frame(term: &mut utils::Term, app: &App) {
         // TODO: refactor this reference-ful code!
         match app.results {
             Some(ref res) => {
-                for i in &res.data {
-                    if let Some(ref title) = i.attributes.title.en {
-                        titles.push_str(title);
-                        titles.push('\n');
-                    }
+                let manga = &res.data[0];
+                if let Some(chaps) = app.get_feed(manga) {
+                    app.download_chapter(&chaps.data[0]);
+                } else {
+                    todo!();
                 }
             },
             None => {titles = "No results".to_string();}
