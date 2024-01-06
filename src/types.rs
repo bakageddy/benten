@@ -1,5 +1,10 @@
 use serde::Deserialize;
 
+pub enum Signal {
+    Search,
+    Select(Manga),
+}
+
 #[derive(Deserialize, Debug)]
 pub struct MangaSearchResult {
     pub result: String,
