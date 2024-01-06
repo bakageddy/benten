@@ -5,17 +5,14 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 
-use std::{
-    io::{stdout, Stdout},
-    process::exit,
-};
+use std::io::{stdout, Stdout};
 
 use anyhow::Result;
 
 pub type Term = ratatui::Terminal<CrosstermBackend<Stdout>>;
 
-pub const USER_AGENT: &'static str = "benten/1.0";
-pub const API_BASE_URL: &'static str = "https://api.mangadex.org/";
+pub const USER_AGENT: &'static str = "foo/1.0";
+pub const API_BASE_URL: &'static str = "https://api.mangadex.dev/";
 
 pub fn start() -> Result<Terminal<CrosstermBackend<Stdout>>> {
     stdout().execute(EnterAlternateScreen)?;
