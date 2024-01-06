@@ -3,14 +3,15 @@ use std::{collections::HashMap, fs, path::Path, rc::Rc, usize};
 use ratatui::layout::{Constraint, Layout, Rect};
 
 use crate::{
-    types::{self, DownloadChapter},
+    types::*,
     utils::{self, API_BASE_URL},
 };
 
 pub struct App {
     pub quit: bool,
     pub input: String,
-    pub results: Option<types::MangaSearchResult>,
+    pub search_result: Option<MangaSearchResult>,
+    pub download_result: Option<MangaChapter>,
     pub cursor: u16,
     pub client: reqwest::blocking::Client,
 }
@@ -22,7 +23,8 @@ impl App {
             .build()?;
         Ok(App {
             input: String::new(),
-            results: None,
+            search_result: None,
+            download_result: None,
             cursor: 0,
             client,
             quit: false,
@@ -41,27 +43,37 @@ impl App {
         panes
     }
 
-    pub fn get_manga_list(&mut self) {
-        self.results = None;
-        let url = format!("{base}/manga", base = utils::API_BASE_URL);
-        let mut params = HashMap::new();
-        params.insert("title", self.input.as_str());
-        params.insert("limit", "1");
-
-        let res = self.client.get(url).query(&params).send();
-        match res {
-            Ok(res) => {
-                let json = res.json::<types::MangaSearchResult>();
-                self.results = json.ok();
-            }
-            Err(_) => {
-                self.results = None;
-                println!("Error sending request!");
+    pub fn send_signal(&mut self, signal: Signal) {
+        match signal {
+            Signal::Search => {
+                self.search_result = self.get_manga_list();
+            },
+            Signal::Select(_x) => {
+                todo!();
             }
         }
     }
 
-    pub fn get_feed(&self, manga: &types::Manga) -> Option<types::MangaChapterResult> {
+    pub fn get_manga_list(&mut self) -> Option<MangaSearchResult> {
+        let url = format!("{base}/manga", base = utils::API_BASE_URL);
+        let mut params = HashMap::new();
+        params.insert("title", self.input.as_str());
+        params.insert("limit", "10");
+
+        let res = self.client.get(url).query(&params).send();
+        match res {
+            Ok(res) => {
+                let json = res.json::<MangaSearchResult>();
+                json.ok()
+            }
+            Err(_) => {
+                println!("Error sending request!");
+                None
+            }
+        }
+    }
+
+    pub fn get_feed(&self, manga: &Manga) -> Option<MangaChapterResult> {
         let url = format!("{}/manga/{}/feed", API_BASE_URL, manga.id);
         let mut params = HashMap::new();
         params.insert("translatedLanguage[]", "en");
@@ -69,7 +81,7 @@ impl App {
         params.insert("order[chapter]", "asc");
         let res = self.client.get(url).query(&params).send();
         match res {
-            Ok(res) => return res.json::<types::MangaChapterResult>().ok(),
+            Ok(res) => return res.json::<MangaChapterResult>().ok(),
             Err(e) => {
                 eprintln!("What happened!?: {e}");
                 return None;
@@ -77,12 +89,12 @@ impl App {
         }
     }
 
-    pub fn download_chapter(&self, chapter: &types::MangaChapter) -> Result<(), ()> {
+    pub fn download_chapter(&self, chapter: &MangaChapter) -> Result<(), ()> {
         let url = format!("{}/at-home/server/{}", API_BASE_URL, chapter.id);
         if let Ok(res) = self.client.get(url).send() {
             if let Ok(metadata) = res.json::<DownloadChapter>() {
                 let dir = Path::new(&chapter.attributes.title);
-                if Path::exists(dir) {
+                if !Path::exists(dir) {
                     fs::create_dir(dir).expect("Should not panic!");
                 }
                 let mut i = 1;
@@ -94,7 +106,7 @@ impl App {
                     if let Ok(page_download_res) = self.client.get(page_download_url).send() {
                         let _ = fs::write(
                             // pad with three zeros before
-                            format!("./{i:0>3}.png"),
+                            format!("./{dir}/{i:0>3}.png", dir=dir.display()),
                             page_download_res.bytes().unwrap(),
                         );
                         i += 1;
