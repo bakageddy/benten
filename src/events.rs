@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
-use crate::app::App;
+use crate::{app::App, types::Signal};
 
 pub fn handle_events(app: &mut App) -> anyhow::Result<()> {
     if event::poll(Duration::from_millis(16)).unwrap_or(false) {
@@ -32,7 +32,7 @@ pub fn handle_events(app: &mut App) -> anyhow::Result<()> {
                 modifiers: KeyModifiers::NONE,
                 kind: KeyEventKind::Press,
                 ..
-            }) => app.get_manga_list(),
+            }) => app.send_signal(Signal::Search),
 
             Event::Key(KeyEvent {
                 code: KeyCode::Left,
