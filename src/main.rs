@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    io::{self, stdout, BufRead, Write},
+    io::{self, stdout, BufRead, Write, BufWriter}, path::Path, fs, ops::Deref,
 };
 
 use serde::Deserialize;
@@ -48,12 +48,6 @@ struct MangaInfo {
     attributes: MangaAttributes,
 }
 
-impl MangaInfo {
-    fn download_chapter(&self, chapter_id: String, client: reqwest::Client) -> anyhow::Result<()> {
-        Ok(())
-    }
-}
-
 #[derive(Debug, Deserialize)]
 struct MangaAttributes {
     title: Title,
@@ -83,7 +77,10 @@ impl<'a> ChapterSearchRequest<'a> {
         let url = format!("{BASE_URL}/manga/{id}/feed", id = self.manga_id);
         let mut params = HashMap::new();
         let limit = self.limit.to_string();
+        let offset = self.offset.to_string();
+
         params.insert("limit", limit);
+        params.insert("offset", offset);
         params.insert("includeExternalUrl", String::from("0"));
         params.insert("order[chapter]", String::from("asc"));
         params.insert("translatedLanguage[]", String::from("en"));
@@ -106,9 +103,13 @@ struct ChapterInfo {
 }
 
 impl ChapterInfo {
-    fn download(&self, client: reqwest::Client) -> anyhow::Result<()> {
-        todo!()
-        // Ok(())
+    async fn download(&self, client: &reqwest::Client) -> anyhow::Result<()> {
+        let url = format!("{BASE_URL}/at-home/server/{}", self.id);
+        let download_path = format!("./chapter{}", self.attr.chapter);
+        let res = client.get(url).send().await?;
+        let info: DownloadInfo = res.json().await?;
+        // TODO: command line args to save data
+        info.save_at(true, download_path, &client).await
     }
 }
 
@@ -117,6 +118,52 @@ struct ChapterAttributes {
     volume: String,
     chapter: String,
     pages: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct DownloadInfo {
+    #[serde(rename="baseUrl")]
+    base_url: String,
+    chapter: PageInfo,
+}
+
+impl DownloadInfo {
+    async fn save_at<P>(&self, good_quality: bool, path: P, client: &reqwest::Client) -> anyhow::Result<()> where P: AsRef<Path> {
+        let mut page_no = 0;
+
+        let data_format;
+        let data;
+        if good_quality {
+            data = &self.chapter.data;
+            data_format = "png";
+        } else {
+            data = &self.chapter.data_saver;
+            data_format = "jpg";
+        }
+
+        let path = path.as_ref().display();
+        for i in data {
+            let url = format!("{}/data/{}/{}", self.base_url, self.chapter.hash, i);
+            let image_path = format!("{path}page{page_no}.{data_format}");
+            println!("Downloading to {image_path}");
+            let res = client.get(url).send().await?;
+            let bytes = res.bytes().await?;
+            let handle = fs::File::create(&image_path)?;
+            let mut bufwtr = BufWriter::new(handle);
+            println!("saving to {image_path}");
+            bufwtr.write_all(bytes.deref())?;
+            page_no += 1;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PageInfo {
+    hash: String,
+    data: Vec<String>,
+    #[serde(rename="dataSaver")]
+    data_saver: Vec<String>,
 }
 
 
@@ -147,7 +194,9 @@ async fn main() -> anyhow::Result<()> {
     if let Some(manga) = response.data.get(option as usize) {
         let chapter_req = ChapterSearchRequest::new(&manga.id, 10, 0);
         let res = chapter_req.get(&client).await?;
-        println!("{res:#?}");
+        for i in res.data {
+            i.download(&client).await?;
+        }
     } else {
     }
     Ok(())
