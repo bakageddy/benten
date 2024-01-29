@@ -10,3 +10,4 @@ reqwest = {version="0.11", features=["json", "blocking"]}
 serde = {version="^1.0", features=["serde_derive"]}
 anyhow = "1.0.75"
 tokio = { version = "1.35.1", features = ["full"]}
+genpdf = { version = "0.2.0", features = ["images"] }
