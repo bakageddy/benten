@@ -1,5 +1,4 @@
-mod lib;
-use crate::lib::*;
+use benten::*;
 use std::io::{self, stdout, BufRead, Write};
 
 #[tokio::main]
@@ -28,11 +27,17 @@ async fn main() -> anyhow::Result<()> {
 
     if let Some(manga) = response.data.get(option as usize) {
         for offset in 0.. {
-            // TODO: handle error after over reaching offset
-            let chapter_req = ChapterSearchRequest::new(&manga.id, 1, offset);
-            let res = chapter_req.get(&client).await?;
-            for i in res.data {
-                i.download(&client).await?;
+            let chapter_req = ChapterSearchRequest::new(&manga.id)
+                .with_limit(10)
+                .with_offset(offset);
+            let chapters = chapter_req.get(&client).await?;
+            if chapters.data.is_empty() {
+                // Break when there's no more chapters to download
+                break;
+            }
+
+            for chapter in chapters.data {
+                chapter.download(&client).await?;
             }
         }
     } else {

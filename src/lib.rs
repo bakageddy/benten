@@ -1,11 +1,6 @@
 use genpdf::Alignment;
 use serde::Deserialize;
-use std::{
-    collections::HashMap,
-    io::Cursor,
-    ops::Deref,
-    path::Path,
-};
+use std::{collections::HashMap, io::Cursor, ops::Deref, path::Path};
 
 pub const BASE_URL: &'static str = "https://api.mangadex.org";
 
@@ -63,7 +58,7 @@ pub enum Title {
     JapaneseRomanized(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ChapterSearchRequest<'a> {
     pub manga_id: &'a str,
     pub limit: i32,
@@ -71,12 +66,21 @@ pub struct ChapterSearchRequest<'a> {
 }
 
 impl<'a> ChapterSearchRequest<'a> {
-    pub fn new(manga_id: &'a str, limit: i32, offset: i32) -> Self {
+    pub fn new(manga_id: &'a str) -> Self {
         Self {
             manga_id,
-            limit,
-            offset,
+            .. Default::default()
         }
+    }
+
+    pub fn with_limit(mut self, limit: i32) -> Self {
+        self.limit = limit;
+        self
+    }
+
+    pub fn with_offset(mut self, offset: i32) -> Self {
+        self.offset = offset;
+        self
     }
 
     pub async fn get(&self, client: &reqwest::Client) -> anyhow::Result<ChapterSearchResponse> {
@@ -116,7 +120,7 @@ impl ChapterInfo {
         let res = client.get(url).send().await?;
         let info: DownloadInfo = res.json().await?;
         // TODO: command line args to save data
-        info.save_at(true, download_path, &client).await
+        info.save_at(Quality::High, download_path, &client).await
     }
 }
 
@@ -134,43 +138,47 @@ pub struct DownloadInfo {
     pub chapter: PageInfo,
 }
 
+pub enum Quality {
+    High,
+    Low,
+}
+
 impl DownloadInfo {
     pub async fn save_at<P>(
         &self,
-        good_quality: bool,
+        q: Quality,
         path: P,
         client: &reqwest::Client,
     ) -> anyhow::Result<()>
     where
         P: AsRef<Path>,
     {
-        let mut page_no = 0;
-
-        let data;
-        if good_quality {
-            data = &self.chapter.data;
-        } else {
-            data = &self.chapter.data_saver;
-        }
+        let data = match q {
+            Quality::High => &self.chapter.data,
+            Quality::Low => &self.chapter.data_saver
+        };
 
         let path = path.as_ref().display();
-        let font = genpdf::fonts::from_files("/usr/share/fonts/truetype/liberation/", "LiberationSans", Some(genpdf::fonts::Builtin::Helvetica))?;
+        let font = genpdf::fonts::from_files(
+            "/usr/share/fonts/truetype/liberation/",
+            "LiberationSans",
+            Some(genpdf::fonts::Builtin::Helvetica),
+        )?;
         let mut pdf = genpdf::Document::new(font);
+        let pdf_path = format!("{path}.pdf");
+        pdf.set_title(&pdf_path);
         let mut dec = genpdf::SimplePageDecorator::new();
         dec.set_margins(10);
         pdf.set_page_decorator(dec);
         for i in data {
             let url = format!("{}/data/{}/{}", self.base_url, self.chapter.hash, i);
-            // let image_path = format!("{path}page{page_no}.{data_format}");
-            // println!("Downloading to {image_path}");
             let res = client.get(url).send().await?;
             let bytes = res.bytes().await?;
             let seeker = Cursor::new(bytes.deref());
-            let image = genpdf::elements::Image::from_reader(seeker)?.with_alignment(Alignment::Center);
+            let image =
+                genpdf::elements::Image::from_reader(seeker)?.with_alignment(Alignment::Center);
             pdf.push(image);
-            page_no += 1;
         }
-        let pdf_path = format!("{path}.pdf");
         pdf.render_to_file(&pdf_path)?;
         println!("INFO: Saved to {pdf_path}");
         Ok(())
