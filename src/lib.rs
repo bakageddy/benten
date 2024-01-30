@@ -69,7 +69,7 @@ impl<'a> ChapterSearchRequest<'a> {
     pub fn new(manga_id: &'a str) -> Self {
         Self {
             manga_id,
-            .. Default::default()
+            ..Default::default()
         }
     }
 
@@ -155,7 +155,7 @@ impl DownloadInfo {
     {
         let data = match q {
             Quality::High => &self.chapter.data,
-            Quality::Low => &self.chapter.data_saver
+            Quality::Low => &self.chapter.data_saver,
         };
 
         let path = path.as_ref().display();

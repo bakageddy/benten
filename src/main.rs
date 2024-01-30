@@ -28,7 +28,7 @@ async fn main() -> anyhow::Result<()> {
     if let Some(manga) = response.data.get(option as usize) {
         for offset in 0.. {
             let chapter_req = ChapterSearchRequest::new(&manga.id)
-                .with_limit(10)
+                .with_limit(1)
                 .with_offset(offset);
             let chapters = chapter_req.get(&client).await?;
             if chapters.data.is_empty() {
@@ -37,6 +37,7 @@ async fn main() -> anyhow::Result<()> {
             }
 
             for chapter in chapters.data {
+                println!("OFFSET: {}, LIMIT: {}", chapter_req.offset, chapter_req.limit);
                 chapter.download(&client).await?;
             }
         }
